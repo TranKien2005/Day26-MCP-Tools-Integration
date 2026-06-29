@@ -11,7 +11,7 @@ Chạy trực tiếp:
     pip install -r ../requirements.txt
     python weather_server.py
 
-Hoặc đăng ký với Claude Code (làm 1 lần, dùng mãi):
+Đăng ký với Claude Code (làm 1 lần, dùng mãi):
     claude mcp add weather -- python /đường/dẫn/tới/weather_server.py
 """
 

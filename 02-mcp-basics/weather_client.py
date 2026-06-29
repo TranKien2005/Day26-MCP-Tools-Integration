@@ -8,7 +8,7 @@ Ví dụ này không cần ANTHROPIC_API_KEY — nó cho thấy lớp giao thứ
 động độc lập với model. (Trong thực tế, một LLM sẽ dùng Function Calling để
 quyết định khi nào gọi tool đã khám phá được.)
 
-Cách chạy (client tự khởi động server):
+Cách chạy (cùng thư mục với weather_server.py, client tự khởi động server):
     pip install -r ../requirements.txt
     python weather_client.py
 """

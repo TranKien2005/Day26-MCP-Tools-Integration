@@ -4,7 +4,6 @@ Tool `get_weather` được định nghĩa schema thủ công VÀ thực thi nga
 chính file app này. Model chỉ QUYẾT ĐỊNH gọi tool nào; app mới là nơi chạy.
 
 Cách chạy:
-    python3 -m venv venv && source venv/bin/activate
     pip install -r ../requirements.txt
     export GEMINI_API_KEY=...
     python weather_function_calling.py
