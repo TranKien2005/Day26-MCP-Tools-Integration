@@ -57,6 +57,119 @@ cd 03-production && python registry_client.py
 
 **MCP (Model Context Protocol)** là một *giao thức chuẩn* (protocol) — giống như USB-C hay HTTP cho thế giới AI. Nó định nghĩa cách một **MCP Client** (như Claude Code, Claude Desktop) kết nối tới các **MCP Server** để khám phá và sử dụng tools, resources, prompts một cách thống nhất.
 
+---
+
+## Ví dụ minh hoạ trực quan
+
+
+### Ví dụ 1 — USB-C: hiểu MCP qua phép so sánh
+
+```
+TRƯỚC MCP (mỗi thiết bị 1 cổng riêng)      SAU MCP (1 chuẩn cho tất cả)
+──────────────────────────────────           ─────────────────────────────
+
+  App 1 ──[format A]──▶ Tool 1                App 1 ─┐
+  App 1 ──[format B]──▶ Tool 2                App 2 ─┼── MCP ──┬── Tool 1
+  App 2 ──[format C]──▶ Tool 1                App 3 ─┘         ├── Tool 2
+  App 2 ──[format D]──▶ Tool 2                                 └── Tool 3
+  App 3 ──[format E]──▶ Tool 1
+  App 3 ──[format F]──▶ Tool 2         Viết tool 1 lần → mọi app dùng được
+
+  6 kết nối cho 3 app × 2 tool         3 app + 3 tool = chỉ 6 kết nối MCP
+  Thêm 1 tool = viết thêm 3 format    Thêm 1 tool = 0 thay đổi ở app
+```
+
+### Ví dụ 2 — Cùng một câu hỏi, hai cách xử lý
+
+User hỏi: **"Thời tiết Hà Nội hôm nay thế nào?"**
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║  CÁCH 1: Function Calling thuần                                      ║
+║                                                                      ║
+║  weather_app.py (MỘT file làm hết)                                   ║
+║  ┌──────────────────────────────────────────────────┐                ║
+║  │ # Bước 1: Viết schema THỦ CÔNG (30 dòng)         │                ║
+║  │ schema = {                                       │                ║
+║  │   "name": "get_weather",                         │                ║
+║  │   "parameters": {                                │                ║
+║  │     "city": {"type": "string"} ...               │                ║
+║  │   }                                              │                ║
+║  │ }                                                │                ║
+║  │                                                  │                ║
+║  │ # Bước 2: Viết hàm thực thi                      │                ║
+║  │ def get_weather(city): ...                       │                ║
+║  │                                                  │                ║
+║  │ # Bước 3: Gửi cho model                          │                ║
+║  │ response = model.generate(prompt, tools=[schema])│                ║
+║  │                                                  │                ║
+║  │ # Bước 4: App tự chạy hàm                        │                ║
+║  │ result = get_weather("Hà Nội")  ← APP chạy       │                ║
+║  │                                                  │                ║
+║  │ # Bước 5: Đưa kết quả lại cho model              │                ║
+║  │ final = model.generate(prompt + result)          │                ║
+║  └──────────────────────────────────────────────────┘                ║
+║                                                                      ║
+║  ⚠️ Muốn dùng tool này ở app khác?                                   ║
+║     → Copy cả schema + hàm sang app mới                              ║
+║     → Đổi sang OpenAI? Viết lại schema theo format OpenAI            ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+╔══════════════════════════════════════════════════════════════════════╗
+║  CÁCH 2: MCP                                                         ║
+║                                                                      ║
+║  weather_server.py (TÁCH RIÊNG)    Bất kỳ MCP client nào             ║
+║  ┌─────────────────────────┐       ┌──────────────────────┐          ║
+║  │ @mcp.tool()             │       │ Claude Code          │          ║
+║  │ def get_weather(city):  │◀──────│ Cursor               │          ║
+║  │     ...                 │  MCP  │ Gemini CLI           │          ║
+║  │                         │       │ App tự viết          │          ║
+║  │ # Schema? TỰ ĐỘNG sinh │       │ ...                  │           ║
+║  │ # từ type hints!        │       │                      │          ║
+║  └─────────────────────────┘       └──────────────────────┘          ║
+║         SERVER chạy                   CLIENT chỉ điều phối           ║
+║                                                                      ║
+║  ✅ Viết 1 lần server → Claude, Cursor, app tự viết đều dùng được     ║
+║     Thêm tool mới? Thêm 1 hàm @mcp.tool(), không sửa client          ║
+╚══════════════════════════════════════════════════════════════════════╝
+```
+
+### Ví dụ 4 — Dòng thời gian một request
+
+```
+Thời gian ──────────────────────────────────────────────────────▶
+
+FUNCTION CALLING:
+  User        App                    Model
+   │──"HN?"──▶│                        │
+   │           │──prompt + schema────▶ │
+   │           │◀──"gọi get_weather"── │    Model CHỈ ra lệnh
+   │           │                        │
+   │           │ get_weather("HN") ◀── │    App TỰ CHẠY hàm
+   │           │──────kết quả────────▶ │
+   │           │◀──"HN 29°C, mưa"──── │    Model tổng hợp
+   │◀──────────│                        │
+   │  "Hà Nội 29°C, mưa nhẹ, nhớ mang ô nhé!"
+
+MCP:
+  User     Client           MCP Protocol          Server
+   │──"HN?"──▶│                  │                   │
+   │           │──list_tools───▶ │ ────────────────▶ │  Khám phá
+   │           │◀──tool list──── │ ◀──────────────── │
+   │           │                  │                   │
+   │           │  (Model quyết định gọi get_weather)  │  Function Calling
+   │           │                  │                   │    bên trong
+   │           │──call_tool────▶ │ ────────────────▶ │
+   │           │                  │       SERVER chạy hàm  ← Server chạy
+   │           │◀──result──────── │ ◀──────────────── │
+   │           │                  │                   │
+   │           │  (Model tổng hợp)                    │
+   │◀──────────│                  │                   │
+   │  "Hà Nội 29°C, mưa nhẹ, nhớ mang ô nhé!"
+```
+
+---
+
 ## So sánh trực tiếp
 
 | Tiêu chí | Function Calling | Model Context Protocol (MCP) |
