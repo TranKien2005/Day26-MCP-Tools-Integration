@@ -82,7 +82,7 @@ def check_mcp_server():
     """Check if MCP server is accessible"""
     print("\n🔍 Checking MCP server connectivity...")
     
-    server_url = "https://weather-mcp-server-oze7nwnjba-as.a.run.app"
+    server_url = "http://localhost:8085/mcp"
     
     try:
         import httpx
@@ -95,7 +95,7 @@ def check_mcp_server():
         
         status_code = asyncio.run(test_connection())
         
-        if status_code in [200, 404]:  # 404 is expected for GET on MCP endpoint
+        if status_code in [200, 404, 406]:  # 200, 404, or 406 means the server is reachable
             print(f"✅ MCP server reachable at {server_url}")
             return True
         else:
